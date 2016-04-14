@@ -29,8 +29,8 @@ std::vector<double> Dequeue_time;
 std::vector<double> Enqueue_time;
 int n = 0;
 int u = 95; // fator de utilizacao
-
 double start_time = 0.0;
+
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, Ptr<Node> n, uint32_t pktCount, float mean)
 {
 	Ptr<ExponentialRandomVariable> x = CreateObject<ExponentialRandomVariable> ();
@@ -74,13 +74,6 @@ void ComputeStats(){
 	std::cout << u << " " << mean_waiting_time << "\n";
 }
 
-//static void CourseChangeCallback (void,std::string,ns3::Ptr<ns3::Packet const> p)
-//{
-// int x = 1;
-// std::cout << "passei aqui\n";
-// x++;
-//}
-
 int main (int argc, char *argv[])
 {
 	uint32_t PacketSize = 1000; // em bytes
@@ -92,7 +85,6 @@ int main (int argc, char *argv[])
 	Time interPacketInterval = Seconds (1);
 	uint32_t numPackets = 10000;
 	double mean = 0.0;
-
 
 	CommandLine cmd;
 	cmd.Usage ("ns3exp - fator de utilizacao.\n"
@@ -107,7 +99,6 @@ int main (int argc, char *argv[])
 	NodeContainer nodes;
 	nodes.Create(2);
 
-	/** Internet stack **/
 	InternetStackHelper internet;
 	internet.Install (nodes);
 
@@ -138,21 +129,16 @@ int main (int argc, char *argv[])
 	double u_fact = u / 100.0;
 	mean = MinIntervalPackets / u_fact;
 	// std::cout << ' ' << *it << "mean:" << mean << "\n";
-	Simulator::Schedule (Seconds (start_time), &GenerateTraffic, source, PacketSize,
-			nodes.Get (1), numPackets, mean);
+	Simulator::Schedule (Seconds (start_time), &GenerateTraffic, source, PacketSize, nodes.Get (1), numPackets, mean);
 
 	Config::Connect ("/NodeList/*/DeviceList/1/$ns3::PointToPointNetDevice/TxQueue/Enqueue", MakeCallback (&Enqueue));
 	Config::Connect ("/NodeList/*/DeviceList/1/$ns3::PointToPointNetDevice/TxQueue/Dequeue", MakeCallback (&Dequeue));
 
-	//Ptr<Object> theptp = nodes.Get (0);
-	//theptp->TraceConnectWithoutContext ("Enqueue", MakeCallback (&seila2));
-
 	//AsciiTraceHelper ascii;
 	//ptp.EnableAsciiAll (ascii.CreateFileStream ("udp-echo.tr"));
-
 
 	Simulator::Run ();
 	Simulator::Destroy ();
 	ComputeStats();
-	return 0;  //modificado
+	return 0;
 }
