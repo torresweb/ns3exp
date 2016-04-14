@@ -151,5 +151,5 @@ int main (int argc, char *argv[])
 	Simulator::Run ();
 	Simulator::Destroy ();
 	ComputeStats();
-	return 0;
+	return 0;  //modificado
 }
