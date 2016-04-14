@@ -28,6 +28,7 @@ NS_LOG_COMPONENT_DEFINE ("MD1 queue");
 std::vector<double> Dequeue_time;
 std::vector<double> Enqueue_time;
 int n = 0;
+int u = 95; // fator de utilizacao
 
 double start_time = 0.0;
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, Ptr<Node> n, uint32_t pktCount, float mean)
@@ -69,7 +70,8 @@ void ComputeStats(){
 		total_waiting_time += waiting_time;
 	}
 	mean_waiting_time = total_waiting_time / n;
-	std::cout << "Packets: " << n << " Mean_waiting_time: " << mean_waiting_time << "\n";
+	//std::cout << "Packets: " << n << " Mean_waiting_time: " << mean_waiting_time << "\n";
+	std::cout << u << " " << mean_waiting_time << "\n";
 }
 
 //static void CourseChangeCallback (void,std::string,ns3::Ptr<ns3::Packet const> p)
@@ -85,16 +87,18 @@ int main (int argc, char *argv[])
 	DataRate Rout("10Mbps");
 	uint64_t PacketRate = Rout.GetBitRate () / (PacketSize * 8);
 	double MinIntervalPackets = 1/float(PacketRate);
-	printf ("PacketSize: %iB, BitRate: %ibps, PacketRate: %.2fpps, IntervalPackets: %.3fms \n", int(PacketSize), int(Rout.GetBitRate ()), float(PacketRate), MinIntervalPackets*1000 );
+	//printf ("PacketSize: %iB, BitRate: %ibps, PacketRate: %.2fpps, IntervalPackets: %.3fms \n", int(PacketSize), int(Rout.GetBitRate ()), float(PacketRate), MinIntervalPackets*1000 );
 	char LinkDelay[10] = "1ms";
-	std:: vector<float> u;
-	//u.push_back( 0.5 );
-	u.push_back( 0.8 );
-	u.push_back( 0.9 );
-	//u.push_back( 0.95 );
 	Time interPacketInterval = Seconds (1);
-	uint32_t numPackets = 3000;
+	uint32_t numPackets = 10000;
 	double mean = 0.0;
+
+
+	CommandLine cmd;
+	cmd.Usage ("ns3exp - fator de utilizacao.\n"
+	           "\n");
+	cmd.AddValue ("u",  "Fator de Utilizacao", u);
+	cmd.Parse (argc, argv);
 
 	Time::SetResolution (Time::NS);
 	LogComponentEnable ("UdpEchoClientApplication", LOG_LEVEL_INFO);
@@ -131,12 +135,11 @@ int main (int argc, char *argv[])
 	source->SetAllowBroadcast (true);
 	source->Connect (remote);
 
-	for (std::vector<float>::iterator it = u.begin() ; it != u.end(); ++it) {
-		mean = MinIntervalPackets / *it;
-		// std::cout << ' ' << *it << "mean:" << mean << "\n";
-		Simulator::Schedule (Seconds (start_time), &GenerateTraffic, source, PacketSize,
-		                       nodes.Get (1), numPackets, mean);
-	}
+	double u_fact = u / 100.0;
+	mean = MinIntervalPackets / u_fact;
+	// std::cout << ' ' << *it << "mean:" << mean << "\n";
+	Simulator::Schedule (Seconds (start_time), &GenerateTraffic, source, PacketSize,
+			nodes.Get (1), numPackets, mean);
 
 	Config::Connect ("/NodeList/*/DeviceList/1/$ns3::PointToPointNetDevice/TxQueue/Enqueue", MakeCallback (&Enqueue));
 	Config::Connect ("/NodeList/*/DeviceList/1/$ns3::PointToPointNetDevice/TxQueue/Dequeue", MakeCallback (&Dequeue));
@@ -144,8 +147,8 @@ int main (int argc, char *argv[])
 	//Ptr<Object> theptp = nodes.Get (0);
 	//theptp->TraceConnectWithoutContext ("Enqueue", MakeCallback (&seila2));
 
-	AsciiTraceHelper ascii;
-	ptp.EnableAsciiAll (ascii.CreateFileStream ("udp-echo.tr"));
+	//AsciiTraceHelper ascii;
+	//ptp.EnableAsciiAll (ascii.CreateFileStream ("udp-echo.tr"));
 
 
 	Simulator::Run ();
