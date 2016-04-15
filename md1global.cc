@@ -31,11 +31,9 @@ int n = 0;
 int u = 95; // fator de utilizacao
 double start_time = 0.0;
 
-static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, Ptr<Node> n, uint32_t pktCount, float mean)
+static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, Ptr<Node> n, uint32_t pktCount, Ptr<ExponentialRandomVariable> mean)
 {
-	Ptr<ExponentialRandomVariable> x = CreateObject<ExponentialRandomVariable> ();
-	x->SetAttribute ("Mean", DoubleValue (mean));
-	double interval = x->GetValue();
+	double interval = mean->GetValue();
 	Time pktInterval =  Seconds(interval);
 	//std::cout << interval << "\n";
 	if (pktCount >= 1)
@@ -82,7 +80,6 @@ int main (int argc, char *argv[])
 	double MinIntervalPackets = 1/float(PacketRate);
 	//printf ("PacketSize: %iB, BitRate: %ibps, PacketRate: %.2fpps, IntervalPackets: %.3fms \n", int(PacketSize), int(Rout.GetBitRate ()), float(PacketRate), MinIntervalPackets*1000 );
 	char LinkDelay[10] = "1ms";
-	Time interPacketInterval = Seconds (1);
 	uint32_t numPackets = 10000;
 	double mean = 0.0;
 
@@ -128,8 +125,10 @@ int main (int argc, char *argv[])
 
 	double u_fact = u / 100.0;
 	mean = MinIntervalPackets / u_fact;
+	Ptr<ExponentialRandomVariable> x = CreateObject<ExponentialRandomVariable> ();
+	x->SetAttribute ("Mean", DoubleValue (mean));
 	// std::cout << ' ' << *it << "mean:" << mean << "\n";
-	Simulator::Schedule (Seconds (start_time), &GenerateTraffic, source, PacketSize, nodes.Get (1), numPackets, mean);
+	Simulator::Schedule (Seconds (start_time), &GenerateTraffic, source, PacketSize, nodes.Get (1), numPackets, x);
 
 	Config::Connect ("/NodeList/*/DeviceList/1/$ns3::PointToPointNetDevice/TxQueue/Enqueue", MakeCallback (&Enqueue));
 	Config::Connect ("/NodeList/*/DeviceList/1/$ns3::PointToPointNetDevice/TxQueue/Dequeue", MakeCallback (&Dequeue));
