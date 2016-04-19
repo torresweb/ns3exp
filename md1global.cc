@@ -74,9 +74,11 @@ void ComputeStats(){
 
 int main (int argc, char *argv[])
 {
-	uint32_t PacketSize = 1000; // em bytes
+	uint32_t PacketSize = 972; // +28B de cabecalhos dara 1000Bytes
+	uint32_t HeadersSize = 28; //20B IP + 8B UDP
+	uint32_t queueSize = 4294967295; //maior tamanho de fila possivel
 	DataRate Rout("10Mbps");
-	uint64_t PacketRate = Rout.GetBitRate () / (PacketSize * 8);
+	uint64_t PacketRate = Rout.GetBitRate () / ((PacketSize + HeadersSize) * 8);
 	double MinIntervalPackets = 1/float(PacketRate);
 	//printf ("PacketSize: %iB, BitRate: %ibps, PacketRate: %.2fpps, IntervalPackets: %.3fms \n", int(PacketSize), int(Rout.GetBitRate ()), float(PacketRate), MinIntervalPackets*1000 );
 	char LinkDelay[10] = "1ms";
@@ -100,7 +102,8 @@ int main (int argc, char *argv[])
 	internet.Install (nodes);
 
 	PointToPointHelper ptp;
-	ptp.SetQueue ("ns3::DropTailQueue");
+	//ptp.SetQueue ("ns3::DropTailQueue");
+	ptp.SetQueue("ns3::DropTailQueue", "MaxPackets",UintegerValue(queueSize));
 	ptp.SetDeviceAttribute ("DataRate", DataRateValue(Rout));
 	ptp.SetChannelAttribute ("Delay", StringValue (LinkDelay));
 
