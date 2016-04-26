@@ -75,7 +75,7 @@ void ComputeStats(){
 int main (int argc, char *argv[])
 {
 	uint32_t PacketSize = 972; // +28B de cabecalhos dara 1000Bytes
-	uint32_t HeadersSize = 28; //20B IP + 8B UDP
+	uint32_t HeadersSize = 28; // 20B IP + 8B UDP
 	uint32_t queueSize = 4294967295; //maior tamanho de fila possivel
 	DataRate Rout("10Mbps");
 	uint64_t PacketRate = Rout.GetBitRate () / ((PacketSize + HeadersSize) * 8);
@@ -85,10 +85,15 @@ int main (int argc, char *argv[])
 	uint32_t numPackets = 10000;
 	double mean = 0.0;
 
+	int r = 1; //Run Seed
+
 	CommandLine cmd;
-	cmd.Usage ("ns3exp - fator de utilizacao.\n"
+	cmd.Usage ("ns3exp [options]\n"
+			"options: --u=[1-...] Fator de utilizacao.\n"
+			"         --r=[1-...] Run Seed\n"
 	           "\n");
 	cmd.AddValue ("u",  "Fator de Utilizacao", u);
+	cmd.AddValue ("r",  "Run Seed", r);
 	cmd.Parse (argc, argv);
 
 	Time::SetResolution (Time::NS);
@@ -128,8 +133,12 @@ int main (int argc, char *argv[])
 
 	double u_fact = u / 100.0;
 	mean = MinIntervalPackets / u_fact;
+
+	RngSeedManager::SetSeed (1);
+	RngSeedManager::SetRun (r);   // Changes run number from default of 1 to 7
 	Ptr<ExponentialRandomVariable> x = CreateObject<ExponentialRandomVariable> ();
 	x->SetAttribute ("Mean", DoubleValue (mean));
+
 	// std::cout << ' ' << *it << "mean:" << mean << "\n";
 	Simulator::Schedule (Seconds (start_time), &GenerateTraffic, source, PacketSize, nodes.Get (1), numPackets, x);
 
