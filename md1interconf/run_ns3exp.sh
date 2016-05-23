@@ -6,7 +6,7 @@
 rm -f *.log7
 rm -f estats*.log
 
-for u in `echo 50 80 90 95`; do 
+for u in `echo 50 80 90 95 99`; do 
 	for r in `seq 1 7`; do 
 		/home/emula/ns3/build/scratch/ns3exp//ns3exp --u=$u --r=$r >> $u.log7; 
 	done; 
