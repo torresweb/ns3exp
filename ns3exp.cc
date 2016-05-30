@@ -48,8 +48,9 @@ int u = 95; // fator de utilizacao
 // 2: show each packet size
 int show = 0;
 double start_time = 0.0;
-uint32_t PacketSize = 970; // +30B de cabecalhos dara 1000Bytes
-uint32_t HeadersSize = 30; // 2B PPP + 20B IP + 8B UDP
+uint32_t PacketSize = 1000; 
+uint32_t HeaderSize = 30; // 2B PPP + 20B IP + 8B UDP
+double paretoshape = 2.0;
 
 static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, Ptr<Node> n, uint32_t pktCount,  double mean_interval)
 {
@@ -74,13 +75,13 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, Ptr<Node> n, 
 	}
 
 	// gd1 o intervalo de envio eh pareto
-	double shape = 50.0;
 	if (mode == 2) {
 		ParInterval = CreateObject<ParetoRandomVariable> ();
 		ParInterval->SetAttribute ("Mean", DoubleValue (mean_interval));
-		ParInterval->SetAttribute ("Shape",DoubleValue (shape));
+		ParInterval->SetAttribute ("Shape",DoubleValue (paretoshape));
 		CurrentMeanInterval = ParInterval->GetValue();
 		//std::cout << CurrentMeanInterval << "\n";
+		//std::cout << "mean interval = " << mean_interval << "\n";
 		pktInterval =  Seconds(CurrentMeanInterval);
 	}
 
@@ -97,7 +98,7 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, Ptr<Node> n, 
 		printf("%f\n",CurrentMeanInterval);
 
 	if (show == 2)
-		printf("%i\n",CurrentPktSize + HeadersSize);
+		printf("%i\n",CurrentPktSize + HeaderSize);
 
 
 	if (pktCount >= 1)
@@ -151,23 +152,26 @@ int main (int argc, char *argv[])
 			"         --r=[1-...] Run Seed\n"
 			"		  --m=[0 ou ] MD1=0, MM1=1,"
 			"		  --p packets"
+			"         --l packet lenght"
 			"         --w warmup packets"
-			"         --s what to show"
+			"         --shape pareto shape"
 	           "\n");
 	cmd.AddValue ("u",  "Fator de Utilizacao", u);
 	cmd.AddValue ("r",  "Run Seed", r);
 	cmd.AddValue ("m",  "Mode: MD1=0, MM1=1, or...", mode);
 	cmd.AddValue ("p",  "Packets simulation", numPackets);
+	cmd.AddValue ("l",  "Packets lenght", PacketSize);
 	cmd.AddValue ("w",  "Packets simulation", warmup);
 	cmd.AddValue ("s",  "What to show", show);
+	cmd.AddValue ("shape",  "Pareto shape", paretoshape);
 	cmd.Parse (argc, argv);
 
 
 	uint32_t queueSize = 4294967295; //maior tamanho de fila possivel
 	DataRate Rout("10Mbps");
-	double PacketRate = (double) Rout.GetBitRate () / ((PacketSize + HeadersSize) * 8.0);
+	double PacketRate = (double) Rout.GetBitRate () / ((PacketSize) * 8.0);
 	double MinIntervalPackets = 1/double(PacketRate);
-	//printf ("PacketSize: %iB, BitRate: %fbps, PacketRate: %.2fpps, IntervalPackets: %.3fms \n", PacketSize + HeadersSize, float(Rout.GetBitRate ()), float(PacketRate), MinIntervalPackets*1000 );
+	//printf ("PacketSize: %iB, BitRate: %fbps, PacketRate: %.2fpps, IntervalPackets: %.3fms \n", PacketSize + HeaderSize, float(Rout.GetBitRate ()), float(PacketRate), MinIntervalPackets*1000 );
 	char LinkDelay[10] = "1ms";
 	double mean = 0.0;
 
@@ -217,7 +221,7 @@ int main (int argc, char *argv[])
 	RngSeedManager::SetRun (r);
 
 	// std::cout << ' ' << *it << "mean:" << mean << "\n";
-	Simulator::Schedule (Seconds (start_time), &GenerateTraffic, source, PacketSize, nodes.Get (1), numPackets, mean);
+	Simulator::Schedule (Seconds (start_time), &GenerateTraffic, source, PacketSize - HeaderSize, nodes.Get (1), numPackets, mean);
 
 	Config::Connect ("/NodeList/*/DeviceList/1/$ns3::PointToPointNetDevice/TxQueue/Enqueue", MakeCallback (&Enqueue));
 	Config::Connect ("/NodeList/*/DeviceList/1/$ns3::PointToPointNetDevice/TxQueue/Dequeue", MakeCallback (&Dequeue));
