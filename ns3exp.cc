@@ -79,7 +79,10 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, Ptr<Node> n, 
 		ParInterval = CreateObject<ParetoRandomVariable> ();
 		ParInterval->SetAttribute ("Mean", DoubleValue (mean_interval));
 		ParInterval->SetAttribute ("Shape",DoubleValue (paretoshape));
+		double paretoscale = mean_interval * (paretoshape - 1.0) / paretoshape;
 		CurrentMeanInterval = ParInterval->GetValue();
+		// convert to lomax distribution (- scale)
+		CurrentMeanInterval = CurrentMeanInterval - paretoscale;
 		//std::cout << CurrentMeanInterval << "\n";
 		//std::cout << "mean interval = " << mean_interval << "\n";
 		pktInterval =  Seconds(CurrentMeanInterval);

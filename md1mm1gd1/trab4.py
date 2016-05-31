@@ -8,6 +8,7 @@ import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 from scipy import stats
 from math import sqrt
+from matplotlib.backends.backend_pdf import PdfPages
 
 # https://en.wikibooks.org/wiki/Fundamentals_of_Transportation/Queueing
 def md1_curve(xlist, mu):
@@ -52,77 +53,125 @@ def run_simulator(u=90, r=1, s=0, m=0, p=1000, l=970, w=100, shape=2.0):
     data = output.split()
     return data
 
-packets = 1100
-warmup = 100
+packets = 110000
+warmup = 10000
 packetsize = 1000
 bandwidth = 10000000 #10Mbps
 
 runseed = 1
 util = 90
-shape = 2.0
+shape = 5.0
+outputfile = 'saidanovo2.pdf'
+
 color = ['r','g','b']
 label = ['m/d/1', 'm/m/1', 'g/d/1']
 
+pp = PdfPages(outputfile)
+
 # Histograma de intervalo entre pacotes gerados para md1
-plt.figure()
+plt.figure(10)
 show = 1
 mode = 0
 data = []
-output = run_simulator(util, runseed, show, mode, packets, packetsize, warmup,shape)
+output = run_simulator(util, runseed, show, mode, packets, packetsize, warmup, shape)
 data = [float(x) for x in output]
-n, bins, patches = plt.hist(data, 50, normed=1, facecolor=color[mode], alpha=0.75)
+meandata  = np.mean(data)
+stddata = np.std(data)
+n, bins, patches = plt.hist(data, 50, normed=1, facecolor=color[mode], alpha=0.5)
+rv = stats.expon(meandata,stddata)
+x = np.linspace(rv.ppf(0.0), rv.ppf(0.99), 100)
+l = plt.plot(x - meandata, rv.pdf(x), 'r-', lw=1, alpha=1.0, label='expon pdf', color=color[mode])
 plt.title('M/D/1 Distribuicao do intervalo entre os pacotes - 90% util.')
+plt.savefig(pp, format='pdf')
+plt.legend()
 #plt.show()
 
-sys.exit()
+#quit()
 
 # Histograma de tamanho de pacotes gerados para mm1
-plt.figure()
+plt.figure(11)
 show = 2
 mode = 1
 data = []
 output = run_simulator(util, runseed, show, mode, packets, packetsize, warmup, shape)
 data = [int(x) for x in output]
-n, bins, patches = plt.hist(data, 50, normed=1, facecolor=color[mode], alpha=0.75)
+meandata  = np.mean(data)
+stddata = np.std(data)
+n, bins, patches = plt.hist(data, 50, normed=1, facecolor=color[mode], alpha=0.5)
+rv = stats.expon(meandata,stddata)
+x = np.linspace(rv.ppf(0.0), rv.ppf(0.99), 100)
+l = plt.plot(x-meandata, rv.pdf(x), 'r-', lw=1, alpha=1.0, label='expon pdf', color=color[mode])
 plt.title('M/M/1 Distribuicao dos tamanhos dos pacotes - 90% util.')
+plt.savefig(pp, format='pdf')
+plt.legend()
 #plt.show()
 
-# Histograma de intervalo entre pacotes gerados para md1
-plt.figure()
+
+# Histograma de intervalo entre pacotes gerados para gd1
+plt.figure(12)
 show = 1
 mode = 2
 data = []
 output = run_simulator(util, runseed, show, mode, packets, packetsize, warmup, shape)
 data = [float(x) for x in output]
-n, bins, patches = plt.hist(data, 50, normed=1, facecolor=color[mode], alpha=0.75)
+meandata  = np.mean(data)
+stddata = np.std(data)
+n, bins, patches = plt.hist(data, 50, normed=1, facecolor=color[mode], alpha=0.5)
+c = shape # ??? confirmar
+#c = 1.0
+rv = stats.lomax(c, meandata, stddata)
+x = np.linspace(rv.ppf(0.0), rv.ppf(0.99), 100)
+l = plt.plot(x-meandata, rv.pdf(x), 'r-', lw=1, alpha=1.0, label='lomax pdf', color=color[mode])
+
+#rv = stats.pareto(shape, meandata, stddata)
+#x = np.linspace(rv.ppf(0.0), rv.ppf(0.99), 100)
+#scale =  meandata * (shape - 1.0) / shape;
+#ny = [rv.pdf(i) - scale for i in x]
+#l = plt.plot(x - meandata - scale, ny, 'r-', lw=1, alpha=1.0, label='pareto #pdf', color='g')
 plt.title('G/D/1 Distribuicao do intervalo entre os pacotes - 90% util.')
+plt.savefig(pp, format='pdf')
+plt.legend()
 #plt.show()
 
-sys.exit()
-
-# curvas teoricas e intervalos de confianca
-plt.figure()
-mu = float(packetsize * 8) / bandwidth 
-x = np.arange(0, 1, 0.01);
-# curva teorica md1
-md1y = md1_curve(x,mu)
-plot1, = plt.plot(x,md1y, color=color[0])
-# curva teorica mm1
-mm1y = mm1_curve(x,mu)
-plot2, = plt.plot(x,mm1y, color=color[1])
 
 alfa = 0.95
 N = 0
 util_factor = [0.5, 0.8, 0.9, 0.95, 0.99]
-# modes:
-# 0 md1 = red
-# 1 mm1 = green
-# 2 gd1 = blue
 show = 0
+together = 13
+plt.figure(together)
 for mode in range(0,3):
     y = []
     y_a = []
     y_b = []
+
+    if (mode == 0):
+        # curvas teoricas e intervalos de confianca
+        mu = float(packetsize * 8) / bandwidth
+        x = np.arange(0, 1, 0.01);
+        # curva teorica md1
+        md1y = md1_curve(x,mu)
+        plt.figure(together)
+        plt.plot(x,md1y, color=color[mode])
+        plt.figure(mode)
+        plt.plot(x,md1y, color=color[mode])
+
+
+    if (mode == 1):
+        # curvas teoricas e intervalos de confianca
+        mu = float(packetsize * 8) / bandwidth
+        x = np.arange(0, 1, 0.01);
+        # curva teorica mm1
+        mm1y = mm1_curve(x,mu)
+        plt.figure(together)
+        plt.plot(x,mm1y, color=color[mode])
+        plt.figure(mode)
+        plt.plot(x,mm1y, color=color[mode])
+ 
+ 
+    if (mode == 2):
+        plt.figure(mode)
+
     for util in util_factor:
         util = util * 100
         data=[]
@@ -141,16 +190,24 @@ for mode in range(0,3):
         else:
             y_a.append(0.0)
             y_b.append(0.0)
-            
-    #print y
-    #print y_a
-    #print y_b
-    plt.errorbar(util_factor, y, yerr=[y_a, y_b], fmt='o',ecolor=color[mode], color = color[mode], label=label[mode] )   
+                
+    plt.figure(together)
+    plt.errorbar(util_factor, y, yerr=[y_a, y_b], fmt='o',ecolor=color[mode], color = color[mode], label=label[mode] )
+    
+    plt.figure(mode)
+    plt.errorbar(util_factor, y, yerr=[y_a, y_b], fmt='o',ecolor=color[mode], color = color[mode], label=label[mode] )
+    plt.legend()
+    plt.xlim(0.0, 1.0)
+    plt.xticks(np.arange(0.0, 1.0, .1))
+    plt.savefig(pp, format='pdf')
+    
 
-
+plt.figure(together)
+plt.legend()
 plt.xlim(0.0, 1.0)
 plt.xticks(np.arange(0.0, 1.0, .1))
-plt.legend()
-plt.show()
+plt.savefig(pp, format='pdf')
+pp.close()
+#plt.show()
 
 
