@@ -5,10 +5,13 @@ import subprocess
 import sys
 import numpy as np
 import matplotlib.mlab as mlab
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pyplot as plt
 from scipy import stats
 from math import sqrt
 from matplotlib.backends.backend_pdf import PdfPages
+
 
 # https://en.wikibooks.org/wiki/Fundamentals_of_Transportation/Queueing
 def md1_curve(xlist, mu):
@@ -34,7 +37,7 @@ def run_simulator(u=90, r=1, s=0, m=0, p=1000, l=970, w=100, shape=2.0):
     # s show :  0 stats, 1 interval, 2 packetsize
     # m mode: 0 md1, 1 mm1, 2 gd1
     # p amount of packtets to send
-    # l lenght each packet (payload only)
+    # l lenght each packet
     # w warmup
     # shape pareto shape
     
@@ -47,29 +50,31 @@ def run_simulator(u=90, r=1, s=0, m=0, p=1000, l=970, w=100, shape=2.0):
     opt_w = '--w='+str(w)
     opt_shape = '--shape='+str(shape)
     
-    simulator = ["/home/emula/ns3/build/scratch/ns3exp/ns3exp", opt_u, opt_r, opt_s, opt_m, opt_p, opt_w, opt_shape]
+    simulator = ["/home/emula/ns3/build/scratch/ns3exp/ns3exp", opt_u, opt_r, opt_s, opt_m, opt_p, opt_l, opt_w, opt_shape]
+    #print simulator
     p = subprocess.Popen(simulator, stdout=subprocess.PIPE)
     output, err = p.communicate()
     data = output.split()
     return data
 
-packets = 110000
-warmup = 10000
+packets =  110000
+warmup =    10000
 packetsize = 1000
 bandwidth = 10000000 #10Mbps
 
 runseed = 1
 util = 90
-shape = 5.0
-outputfile = 'saidanovo2.pdf'
+shape = 50.0
+outputfile = 'alltogether-shape-50.pdf'
 
 color = ['r','g','b']
 label = ['m/d/1', 'm/m/1', 'g/d/1']
 
 pp = PdfPages(outputfile)
 
+together = 10
+
 # Histograma de intervalo entre pacotes gerados para md1
-plt.figure(10)
 show = 1
 mode = 0
 data = []
@@ -77,68 +82,105 @@ output = run_simulator(util, runseed, show, mode, packets, packetsize, warmup, s
 data = [float(x) for x in output]
 meandata  = np.mean(data)
 stddata = np.std(data)
-n, bins, patches = plt.hist(data, 50, normed=1, facecolor=color[mode], alpha=0.5)
+#print "md1 ", meandata, stddata
+plt.figure(11)
+plt.hist(data, 50, normed=1, facecolor=color[mode], alpha=0.5)
 rv = stats.expon(meandata,stddata)
 x = np.linspace(rv.ppf(0.0), rv.ppf(0.99), 100)
-l = plt.plot(x - meandata, rv.pdf(x), 'r-', lw=1, alpha=1.0, label='expon pdf', color=color[mode])
+plt.plot(x - meandata, rv.pdf(x), 'r-', lw=1, alpha=1.0, label='Expon pdf M/D/1', color=color[mode])
 plt.title('M/D/1 Distribuicao do intervalo entre os pacotes - 90% util.')
-plt.savefig(pp, format='pdf')
 plt.legend()
+plt.savefig(pp, format='pdf')
+# grafico junto md1/gd1
+plt.figure(together)
+plt.hist(data, 50, normed=1, facecolor=color[mode], alpha=0.5)
+plt.plot(x - meandata, rv.pdf(x), 'r-', lw=1, alpha=1.0, label='Expon pdf #M/D/1', color=color[mode])
 #plt.show()
 
 #quit()
 
+# Histograma de intervalo entre pacotes gerados para gd1
+show = 1
+mode = 2
+rdata = []
+output = []
+output = run_simulator(util, runseed, show, mode, packets, packetsize, warmup, shape)
+rdata = [float(d) for d in output]
+meandata  = np.mean(rdata)
+stddata = np.std(rdata)
+#print "gd1 ", meandata, stddata
+plt.figure(12)
+plt.hist(rdata, 100, normed=1, facecolor=color[mode], alpha=0.5)
+
+#saida = ''
+#for d in output:
+#    saida = saida + str(d) + ' '
+#    
+#print saida
+
+#quit()
+
+### lomax
+#scale =  meandata * (shape - 1.0) / shape;
+c = shape
+# lomax teorema reverso
+rvl = stats.lomax(c, meandata, stddata)
+lx = np.linspace(rvl.ppf(0.0), rvl.ppf(0.99), 100)
+plt.plot(lx - meandata, rvl.pdf(lx), 'r-', lw=1, alpha=1.0, label='Lomax pdf - G/D/1', color=color[mode])
+
+# verificando g/d/1 com expon
+rve = stats.expon(meandata, stddata)
+ex = np.linspace(rve.ppf(0.0), rve.ppf(0.99), 100)
+plt.plot(ex - meandata, rve.pdf(ex), 'r-', lw=1, alpha=1.0, label='Expon pdf - G/D/1', color='black')
+plt.title('G/D/1 Distribuicao do intervalo entre os pacotes - 90% util.')
+plt.legend()
+plt.savefig(pp, format='pdf')
+#plt.show()
+
+#pp.close()
+#quit()
+
+# grafico junto md1/gd1
+plt.figure(together)
+plt.title('M/D/1 e G/D/1 - Distribuicao do intervalo entre os pacotes - 90% util.')
+plt.hist(rdata, 100, normed=1, facecolor=color[mode], alpha=0.5)
+plt.plot(lx - meandata, rvl.pdf(lx), 'r-', lw=1, alpha=1.0, label='Lomax pdf - G/D/1', color=color[mode])
+plt.plot(ex - meandata, rve.pdf(ex), 'r-', lw=1, alpha=1.0, label='Expon pdf - G/D/1', color='black')
+plt.legend()
+plt.savefig(pp, format='pdf')
+
+#plt.show()
+#pp.close()
+#quit()
+
 # Histograma de tamanho de pacotes gerados para mm1
-plt.figure(11)
+plt.figure(13)
 show = 2
 mode = 1
 data = []
 output = run_simulator(util, runseed, show, mode, packets, packetsize, warmup, shape)
 data = [int(x) for x in output]
 meandata  = np.mean(data)
+#print "mm1 ", meandata
 stddata = np.std(data)
-n, bins, patches = plt.hist(data, 50, normed=1, facecolor=color[mode], alpha=0.5)
+plt.hist(data, 50, normed=1, facecolor=color[mode], alpha=0.5)
 rv = stats.expon(meandata,stddata)
 x = np.linspace(rv.ppf(0.0), rv.ppf(0.99), 100)
-l = plt.plot(x-meandata, rv.pdf(x), 'r-', lw=1, alpha=1.0, label='expon pdf', color=color[mode])
+plt.plot(x-meandata, rv.pdf(x), 'r-', lw=1, alpha=1.0, label='Expon pdf M/M/1', color=color[mode])
 plt.title('M/M/1 Distribuicao dos tamanhos dos pacotes - 90% util.')
-plt.savefig(pp, format='pdf')
 plt.legend()
+plt.savefig(pp, format='pdf')
 #plt.show()
 
 
-# Histograma de intervalo entre pacotes gerados para gd1
-plt.figure(12)
-show = 1
-mode = 2
-data = []
-output = run_simulator(util, runseed, show, mode, packets, packetsize, warmup, shape)
-data = [float(x) for x in output]
-meandata  = np.mean(data)
-stddata = np.std(data)
-n, bins, patches = plt.hist(data, 50, normed=1, facecolor=color[mode], alpha=0.5)
-c = shape # ??? confirmar
-#c = 1.0
-rv = stats.lomax(c, meandata, stddata)
-x = np.linspace(rv.ppf(0.0), rv.ppf(0.99), 100)
-l = plt.plot(x-meandata, rv.pdf(x), 'r-', lw=1, alpha=1.0, label='lomax pdf', color=color[mode])
-
-#rv = stats.pareto(shape, meandata, stddata)
-#x = np.linspace(rv.ppf(0.0), rv.ppf(0.99), 100)
-#scale =  meandata * (shape - 1.0) / shape;
-#ny = [rv.pdf(i) - scale for i in x]
-#l = plt.plot(x - meandata - scale, ny, 'r-', lw=1, alpha=1.0, label='pareto #pdf', color='g')
-plt.title('G/D/1 Distribuicao do intervalo entre os pacotes - 90% util.')
-plt.savefig(pp, format='pdf')
-plt.legend()
-#plt.show()
-
+#pp.close()
+#quit()
 
 alfa = 0.95
 N = 0
 util_factor = [0.5, 0.8, 0.9, 0.95, 0.99]
 show = 0
-together = 13
+together = 20
 plt.figure(together)
 for mode in range(0,3):
     y = []

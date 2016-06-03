@@ -76,13 +76,14 @@ static void GenerateTraffic (Ptr<Socket> socket, uint32_t pktSize, Ptr<Node> n, 
 
 	// gd1 o intervalo de envio eh pareto
 	if (mode == 2) {
+	    double paretoscale = mean_interval * (paretoshape - 1.0) / paretoshape;
 		ParInterval = CreateObject<ParetoRandomVariable> ();
 		ParInterval->SetAttribute ("Mean", DoubleValue (mean_interval));
 		ParInterval->SetAttribute ("Shape",DoubleValue (paretoshape));
-		double paretoscale = mean_interval * (paretoshape - 1.0) / paretoshape;
 		CurrentMeanInterval = ParInterval->GetValue();
-		// convert to lomax distribution (- scale)
-		CurrentMeanInterval = CurrentMeanInterval - paretoscale;
+		//std::cout << "pareto shape = " << paretoshape << "\n";
+		//std::cout << "pareto scale = " << paretoscale << "\n";
+		CurrentMeanInterval = (CurrentMeanInterval - paretoscale) * paretoshape;
 		//std::cout << CurrentMeanInterval << "\n";
 		//std::cout << "mean interval = " << mean_interval << "\n";
 		pktInterval =  Seconds(CurrentMeanInterval);
@@ -157,6 +158,7 @@ int main (int argc, char *argv[])
 			"		  --p packets"
 			"         --l packet lenght"
 			"         --w warmup packets"
+			"         --s what to show"
 			"         --shape pareto shape"
 	           "\n");
 	cmd.AddValue ("u",  "Fator de Utilizacao", u);
